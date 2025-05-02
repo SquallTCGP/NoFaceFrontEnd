@@ -1,8 +1,6 @@
 #root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
+  width: 100%;
+  padding: 30px;
 }
 
 .logo {
@@ -39,4 +37,326 @@
 
 .read-the-docs {
   color: #888;
+}
+
+/* Card Gallery Styles */
+.card-gallery-container {
+  width: 100%;
+  margin: 0 auto;
+  text-align: left;
+}
+.card-gallery-container select {
+  padding: 0.5rem;
+  font-size: 1rem;
+  margin-bottom: 1rem;
+}
+.card-grid {
+  display: grid;
+  /* Fix grid layout to prevent overlapping */
+  grid-template-columns: repeat(auto-fill, minmax(185px, 1fr));
+  gap: 10px;
+  justify-items: center;
+}
+.card-container {
+  position: relative;
+  width: 180px;
+  display: inline-block;
+  transition: transform 0.3s ease;
+  margin: 0;
+  padding: 0;
+}
+.card-container:hover {
+  transform: scale(1.05);
+}
+.card-thumb {
+  width: 180px;
+  border-radius: 10px;
+  cursor: pointer;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* New card status indicators */
+.card-status-panel {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background-color: rgba(0, 0, 0, 0.6);
+  padding: 4px;
+  border-radius: 4px;
+  z-index: 5;
+}
+
+.status-btn {
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: bold;
+  color: white;
+  transition: background-color 0.2s;
+}
+
+.owned-btn {
+  background-color: rgba(76, 175, 80, 0.4);  /* Inactive green */
+}
+
+.owned-btn.active {
+  background-color: #4CAF50;  /* Active green */
+}
+
+.wanted-btn {
+  background-color: rgba(255, 193, 7, 0.4);  /* Inactive yellow */
+}
+
+.wanted-btn.active {
+  background-color: #FFC107;  /* Active yellow */
+}
+
+/* Remove old card status icons styles */
+.card-status-icons {
+  display: none;  /* Hide old icons */
+}
+
+.owned-icon, .wanted-icon {
+  display: none;  /* Hide old icons */
+}
+
+.icon-inactive {
+  display: none;  /* Hide old icons */
+}
+
+.card-thumb.card-owned {
+  border: 2px solid #4CAF50;
+}
+.card-thumb.card-wanted {
+  border: 2px solid #FFC107;
+}
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+.modal-content {
+  position: relative;
+  background-color: white;
+  padding: 20px 20px 10px 20px;
+  border-radius: 10px;
+  max-width: 90%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.modal-content img {
+  max-height: 70vh;
+  max-width: 100%;
+  margin-bottom: 10px;
+}
+.card-details {
+  width: 100%;
+  margin-bottom: 15px;
+}
+.modal-checkboxes {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 5px;
+  padding: 5px 10px;
+  background-color: rgba(240, 240, 240, 0.9);
+  border-radius: 5px;
+  width: 100%;
+  justify-content: center;
+}
+.modal-checkboxes label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  font-weight: bold;
+  color: #333;
+}
+.modal-checkboxes input[type="checkbox"] {
+  cursor: pointer;
+}
+.modal-checkboxes input[type="checkbox"]:disabled {
+  cursor: not-allowed;
+}
+.modal-content button {
+  margin-top: 1rem;
+  padding: 0.5rem 1rem;
+  border: none;
+  background: #007bff;
+  color: #fff;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.modal-content button:hover {
+  background: #0069d9;
+}
+
+.modal-close-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background-color: #f0f0f0;
+  color: #333;
+  border: none;
+  font-size: 18px;
+  font-weight: bold;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+}
+
+.modal-close-btn:hover {
+  background-color: #e0e0e0;
+}
+
+/* Loading Spinner */
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 50vh;
+  text-align: center;
+}
+
+.spinner {
+  border: 4px solid rgba(0, 0, 0, 0.1);
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border-left-color: #007bff;
+  animation: spin 1s linear infinite;
+  margin-bottom: 20px;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* Instructions */
+.instructions {
+  width: 100%;
+  margin-top: 0;
+  margin-bottom: 20px;
+  padding: 15px;
+  background-color: #f0f0f0;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  color: #333;
+}
+
+.instructions h3 {
+  margin-top: 0;
+  margin-bottom: 10px;
+  color: #2c3e50;
+  font-size: 1.2rem;
+}
+
+.instructions ul {
+  padding-left: 20px;
+  margin-bottom: 0;
+  list-style-type: circle;
+}
+
+.instructions li {
+  margin-bottom: 5px;
+  line-height: 1.4;
+}
+
+/* Controls section with dropdown and buttons */
+.gallery-controls {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.gallery-controls select {
+  padding: 8px 32px 8px 12px; /* extra right padding for arrow */
+  border-radius: 5px;
+  border: 1px solid #ccc;
+  font-size: 14px;
+  min-width: 200px;
+  height: 40px; /* unify with button height */
+  line-height: 1.2;
+  /* Optional: hide default arrow to customize if desired */
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0L5 6L10 0H0Z' fill='%23666'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 10px;
+}
+
+.action-button {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 5px;
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s, transform 0.1s;
+}
+
+.action-button:hover {
+  transform: translateY(-2px);
+}
+
+.action-button:active {
+  transform: translateY(0);
+}
+
+.save-button {
+  background-color: #4CAF50;
+  color: white;
+}
+
+.save-button:hover {
+  background-color: #3e8e41;
+}
+
+.reset-button {
+  background-color: #f44336;
+  color: white;
+}
+
+.reset-button:hover {
+  background-color: #d32f2f;
+}
+
+.action-buttons .action-button {
+  height: 40px; /* unify with select height */
 }
