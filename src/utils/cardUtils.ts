@@ -1,9 +1,45 @@
-import { RARITY_MAP } from '../config';
+/**
+ * Pokemon TCG Card Database Utilities
+ * Provides functions and configuration for working with card data
+ */
+
+/**
+ * List of available card sets in the game
+ */
+export const CARD_SETS = [
+  'Genetic Apex',
+  'Mythical Island',
+  'Space-Time Smackdown',
+  'Triumphant Light',
+  'Shining Revelry',
+  'Celestial Guardians',
+]; 
+
+/**
+ * Rarity Mapping - Maps rarity codes to numeric values
+ * @type {Record<string, number>}
+ */
+export const RARITY_MAP = {
+  "C": 1,      // Normal / 1 Diamonds
+  "U": 2,      // Normal / 2 Diamonds
+  "R": 3,      // Normal / 3 Diamonds
+  "RR": 4,     // EX / 4 Diamonds
+  "AR": 5,     // 1 Star
+  "SR": 6,     // 2 Star
+  "SAR": 7,    // Rainbow 2 Star
+  "IM": 8,     // Immersive / 3 Star
+  "UR": 9,     // Crown Rare
+  "S": 10,     // Shiny
+  "SSR": 11,   // Double Shiny
+  "IR": 12,    // Immersive / Triple Shiny
+};
 
 /**
  * Calculate card desirability based on rarity
- * @param {number} rarity - The card's rarity value
- * @returns {number} - The desirability value
+ * Higher rarity cards have higher desirability values
+ * 
+ * @param {number} rarity - The card's rarity value (1-12)
+ * @returns {number} - The desirability value (0-4)
  */
 export const calculateDesirabilityFromRarity = (rarity: number): number => {
   // Map rarity values to desirability values
@@ -27,6 +63,7 @@ export const calculateDesirabilityFromRarity = (rarity: number): number => {
 
 /**
  * Get icon class for card status in gallery
+ * 
  * @param {boolean} owned - Whether the card is owned
  * @param {boolean} wanted - Whether the card is wanted
  * @returns {string} - CSS class for status icon

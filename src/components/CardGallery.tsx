@@ -1,23 +1,27 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react'
 import FullCardsDB from '../json/Full_Cards_Database.json'
 import { calculateDesirabilityFromRarity } from '../utils/cardUtils'
-import { loadDatabase, saveDatabase, resetDatabase, downloadDatabaseAsFile, loadOriginalDatabase } from '../utils/dbUtils'
+import { loadDatabase, saveDatabase, resetDatabase, downloadDatabaseAsFile, importDatabaseFromFile } from '../utils/dbUtils'
 import { Card, CardWithKey, CardsDatabase } from '../types'
+import { CARD_SETS } from '../utils/cardUtils'
+
+// Define the type for the imported images
+type ImageModule = { default: string };
+type ImageModules = Record<string, ImageModule>;
 
 // @ts-ignore - The glob import pattern is provided by Vite
-const images = import.meta.glob<{ default: string }>('../assets/card-images/*/*.png', { eager: true })
+const images = import.meta.glob<ImageModule>('../assets/card-images/*/*.png', { eager: true }) as ImageModules
 
+/**
+ * CardGallery Component
+ * 
+ * Displays a gallery of cards from various sets with filtering capabilities.
+ * Allows users to mark cards as owned or wanted and save their collection.
+ * 
+ * @returns {JSX.Element} The rendered CardGallery component
+ */
 const CardGallery: React.FC = () => {
-  const sets = [
-    'Genetic Apex',
-    'Mythical Island',
-    'Space-Time Smackdown',
-    'Triumphant Light',
-    'Shining Revelry',
-    'Celestial Guardians',
-  ]
-
-  const [selectedSet, setSelectedSet] = useState<string>(sets[0])
+  const [selectedSet, setSelectedSet] = useState<string>(CARD_SETS[0])
   const [modalCardKey, setModalCardKey] = useState<string | null>(null)
   const [cardsDatabase, setCardsDatabase] = useState<CardsDatabase>(FullCardsDB as CardsDatabase)
   const [isLoading, setIsLoading] = useState<boolean>(true)
@@ -25,8 +29,12 @@ const CardGallery: React.FC = () => {
   const [isSaving, setIsSaving] = useState<boolean>(false)
   const [isResetting, setIsResetting] = useState<boolean>(false)
   const [resetKey, setResetKey] = useState<number>(0) // Used to force re-render after reset
+  const [filterOwned, setFilterOwned] = useState<boolean>(false)
+  const [filterWanted, setFilterWanted] = useState<boolean>(false)
 
-  // Load database on component mount
+  /**
+   * Load database on component mount
+   */
   const loadData = useCallback(async () => {
     try {
       setIsLoading(true)
@@ -45,10 +53,24 @@ const CardGallery: React.FC = () => {
     loadData()
   }, [loadData, resetKey])
 
-  // Filter JSON entries by selected set and attach image URL
+  /**
+   * Filter JSON entries by selected set and attach image URL
+   * Apply owned/wanted filters if enabled
+   */
   const cards = useMemo<CardWithKey[]>(() => {
     return Object.entries(cardsDatabase)
-      .filter(([, card]) => card.card_set_base_name === selectedSet)
+      .filter(([, card]) => {
+        // Apply set filter
+        if (card.card_set_base_name !== selectedSet) return false
+        
+        // Apply owned filter if enabled
+        if (filterOwned && !card.card_owned) return false
+        
+        // Apply wanted filter if enabled
+        if (filterWanted && card.card_desirability <= 0) return false
+        
+        return true
+      })
       .map(([key, card]) => {
         const imageEntry = Object.entries(images).find(
           ([path]) => path.includes(`${selectedSet}/${'c' + key}`)
@@ -56,7 +78,7 @@ const CardGallery: React.FC = () => {
         const imageUrl = imageEntry ? imageEntry[1].default : null
         return { key, ...card, imageUrl }
       })
-  }, [selectedSet, cardsDatabase])
+  }, [selectedSet, cardsDatabase, filterOwned, filterWanted])
 
   // Handle set changing with loading state
   useEffect(() => {
@@ -72,17 +94,37 @@ const CardGallery: React.FC = () => {
     }
   }, [selectedSet, isLoading])
 
+  /**
+   * Handle set change from dropdown
+   * @param {React.ChangeEvent<HTMLSelectElement>} e - Select change event
+   */
   const handleSetChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setSelectedSet(e.target.value)
   }
 
+  /**
+   * Open modal with card details
+   * @param {string} key - Card key to display in modal
+   */
   const openModal = (key: string): void => setModalCardKey(key)
+  
+  /**
+   * Close the card details modal
+   */
   const closeModal = (): void => setModalCardKey(null)
 
+  /**
+   * Find the modal card details from the cards array
+   */
   const modalCard = modalCardKey
     ? cards.find(c => c.key === modalCardKey)
     : null
 
+  /**
+   * Handle owned status change
+   * @param {string} cardKey - Key of the card to update
+   * @param {boolean} isOwned - New owned status
+   */
   const handleOwnedChange = (cardKey: string, isOwned: boolean): void => {
     // Update in-memory database
     const updatedDb = {
@@ -100,6 +142,11 @@ const CardGallery: React.FC = () => {
     setCardsDatabase(updatedDb)
   }
 
+  /**
+   * Handle wanted status change
+   * @param {string} cardKey - Key of the card to update
+   * @param {boolean} isWanted - New wanted status
+   */
   const handleWantedChange = (cardKey: string, isWanted: boolean): void => {
     const card = cardsDatabase[cardKey]
     
@@ -130,14 +177,22 @@ const CardGallery: React.FC = () => {
     setCardsDatabase(updatedDb)
   }
 
-  // Toggle owned status by clicking the button
+  /**
+   * Toggle owned status by clicking the button
+   * @param {React.MouseEvent} e - Click event
+   * @param {string} cardKey - Key of the card to toggle
+   */
   const toggleOwned = (e: React.MouseEvent, cardKey: string): void => {
     e.stopPropagation(); // Prevent opening the modal
     const card = cardsDatabase[cardKey];
     handleOwnedChange(cardKey, !card.card_owned);
   }
 
-  // Toggle wanted status by clicking the button
+  /**
+   * Toggle wanted status by clicking the button
+   * @param {React.MouseEvent} e - Click event
+   * @param {string} cardKey - Key of the card to toggle
+   */
   const toggleWanted = (e: React.MouseEvent, cardKey: string): void => {
     e.stopPropagation(); // Prevent opening the modal
     const card = cardsDatabase[cardKey];
@@ -146,11 +201,13 @@ const CardGallery: React.FC = () => {
     }
   }
 
-  // Handle save button click
-  const handleSaveClick = (): void => {
+  /**
+   * Handle save button click to download database
+   */
+  const handleSaveClick = async (): Promise<void> => {
     setIsSaving(true);
     try {
-      downloadDatabaseAsFile(cardsDatabase);
+      await downloadDatabaseAsFile(cardsDatabase);
     } catch (error) {
       console.error('Error saving database:', error);
     } finally {
@@ -158,7 +215,9 @@ const CardGallery: React.FC = () => {
     }
   }
 
-  // Handle reset button click
+  /**
+   * Handle reset button click to restore original database
+   */
   const handleResetClick = async (): Promise<void> => {
     if (confirm('Are you sure you want to reset the database to original values? This will lose all your changes.')) {
       setIsResetting(true);
@@ -179,6 +238,32 @@ const CardGallery: React.FC = () => {
     }
   }
 
+  /**
+   * Handle filter changes
+   * @param {React.ChangeEvent<HTMLInputElement>} e - Change event
+   */
+  const handleFilterChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
+    const { name, checked } = e.target;
+    if (name === 'owned') setFilterOwned(checked);
+    if (name === 'wanted') setFilterWanted(checked);
+  }
+
+  /**
+   * Handle import button click to import a database from a file
+   */
+  const handleImportClick = async (): Promise<void> => {
+    try {
+      const importedDb = await importDatabaseFromFile();
+      setCardsDatabase(importedDb);
+      // Force a complete re-render by changing the reset key
+      setTimeout(() => {
+        setResetKey(prev => prev + 1);
+      }, 100);
+    } catch (error) {
+      console.error('Error importing database:', error);
+    }
+  }
+
   if (isLoading) {
     return (
       <div className="loading-container">
@@ -190,10 +275,11 @@ const CardGallery: React.FC = () => {
 
   return (
     <div className="card-gallery-container">
-      <div className="instructions">
+      <div className="instructions instructions-container">
         <h3>Card Gallery Instructions:</h3>
         <ul>
           <li>Select a card set from the dropdown menu</li>
+          <li>Use the filters to show only owned or wanted cards</li>
           <li>Click on any card to mark it as owned or wanted</li>
           <li>Use the buttons on each card to quickly toggle status</li>
           <li>Use the Save button to download your collection</li>
@@ -201,25 +287,55 @@ const CardGallery: React.FC = () => {
         </ul>
       </div>
 
-      <div className="gallery-controls">
-        <select
-          value={selectedSet}
-          onChange={handleSetChange}
-          disabled={isChangingSet || isSaving || isResetting}
-        >
-          {sets.map(set => (
-            <option key={set} value={set}>
-              {set}
-            </option>
-          ))}
-        </select>
-        <div className="action-buttons">
+      <div className="gallery-controls-container">
+        <div className="left-controls controls-flex">
+          <select
+            value={selectedSet}
+            onChange={handleSetChange}
+            disabled={isChangingSet || isSaving || isResetting}
+          >
+            {CARD_SETS.map(set => (
+              <option key={set} value={set}>
+                {set}
+              </option>
+            ))}
+          </select>
+          
+          <div className="filter-checkboxes filter-container">
+            <label className="filter-label">
+              <input
+                type="checkbox"
+                name="owned"
+                checked={filterOwned}
+                onChange={handleFilterChange}
+              />
+              Owned Cards
+            </label>
+            <label className="filter-label">
+              <input
+                type="checkbox"
+                name="wanted"
+                checked={filterWanted}
+                onChange={handleFilterChange}
+              />
+              Wanted Cards
+            </label>
+          </div>
+        </div>
+
+        <div className="right-controls">
           <button 
             className="action-button save-button" 
             onClick={handleSaveClick}
             disabled={isSaving || isResetting}
           >
             {isSaving ? 'Saving...' : 'Save Card Database'}
+          </button>
+          <button 
+            className="action-button import-button" 
+            onClick={handleImportClick}
+          >
+            Import Database
           </button>
           <button 
             className="action-button reset-button" 
@@ -238,7 +354,7 @@ const CardGallery: React.FC = () => {
         </div>
       ) : (
         <div className="card-grid">
-          {cards.map(card =>
+          {cards.length > 0 ? cards.map(card =>
             card.imageUrl ? (
               <div key={card.key} className="card-container">
                 <img
@@ -247,7 +363,7 @@ const CardGallery: React.FC = () => {
                   className="card-thumb"
                   onClick={() => openModal(card.key)}
                 />
-                {/* New card status panel */}
+                {/* Card status panel */}
                 <div className="card-status-panel">
                   <button 
                     className={`status-btn owned-btn ${card.card_owned ? 'active' : ''}`}
@@ -270,6 +386,11 @@ const CardGallery: React.FC = () => {
                 </div>
               </div>
             ) : null
+          ) : (
+            <div className="no-results">
+              <p>No cards found with the current filters.</p>
+              <p>Try changing the set or adjusting the filters.</p>
+            </div>
           )}
         </div>
       )}

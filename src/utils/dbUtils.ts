@@ -1,4 +1,14 @@
+/**
+ * Database Utilities Module
+ * 
+ * Provides functions for loading, saving, and managing the card database.
+ * Handles persistent storage operations, database initialization, and database exports.
+ * 
+ * @module dbUtils
+ */
+
 import { CardsDatabase } from '../types';
+import { downloadFile, readFile } from './webFileService';
 
 /**
  * Initializes the database by copying the original to working copy if needed
@@ -29,7 +39,7 @@ export const initDatabase = async (): Promise<CardsDatabase> => {
  */
 export const loadOriginalDatabase = async (): Promise<CardsDatabase> => {
   try {
-    // Always fetch from original source file
+    // For web browser, fetch from file
     const response = await fetch('/src/json/Full_Cards_Database.json');
     const originalDb = await response.json() as CardsDatabase;
     return originalDb;
@@ -45,20 +55,10 @@ export const loadOriginalDatabase = async (): Promise<CardsDatabase> => {
  * @returns {Promise<void>}
  */
 export const saveDatabase = async (database: CardsDatabase): Promise<void> => {
-  // In a real application, this would use API calls to save to the server
-  // For now we'll use a simulated approach since browser JS can't directly write files
-  
   try {
-    // In a real app, you would do something like:
-    // await fetch('/api/save-database', {
-    //   method: 'POST',
-    //   headers: { 'Content-Type': 'application/json' },
-    //   body: JSON.stringify(database)
-    // });
-    
     // For development, we'll just log the save operation and use localStorage
     localStorage.setItem('cardsDatabase', JSON.stringify(database));
-    console.log('Database saved to localStorage (simulated file save)');
+    console.log('Database saved to localStorage');
   } catch (error) {
     console.error('Error saving database:', error);
   }
@@ -109,33 +109,35 @@ export const resetDatabase = async (): Promise<CardsDatabase> => {
 };
 
 /**
+ * Imports a database from a user-selected JSON file
+ * @returns {Promise<CardsDatabase>} The imported database
+ */
+export const importDatabaseFromFile = async (): Promise<CardsDatabase> => {
+  try {
+    const fileContent = await readFile();
+    const database = JSON.parse(fileContent) as CardsDatabase;
+    
+    // Save the imported database
+    await saveDatabase(database);
+    
+    return database;
+  } catch (error) {
+    console.error('Error importing database:', error);
+    throw error;
+  }
+};
+
+/**
  * Downloads the database as a JSON file
  * @param {CardsDatabase} database - The database to download
  */
-export const downloadDatabaseAsFile = (database: CardsDatabase): void => {
+export const downloadDatabaseAsFile = async (database: CardsDatabase): Promise<void> => {
   try {
     // Convert database to JSON string
     const jsonString = JSON.stringify(database, null, 2);
     
-    // Create a blob
-    const blob = new Blob([jsonString], { type: 'application/json' });
-    
-    // Create download link
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'Full_Cards_Database.json';
-    
-    // Append link to body, click it, and remove it
-    document.body.appendChild(link);
-    link.click();
-    
-    // Clean up
-    setTimeout(() => {
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-    }, 100);
-    
+    // Use our web file service to download the file
+    downloadFile(jsonString, 'Full_Cards_Database.json');
     console.log('Database download initiated');
   } catch (error) {
     console.error('Error downloading database:', error);
