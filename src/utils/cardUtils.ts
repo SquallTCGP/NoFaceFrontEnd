@@ -38,17 +38,22 @@ export const RARITY_MAP = {
  * Calculate card desirability based on rarity
  * Higher rarity cards have higher desirability values
  * 
- * @param {number} rarity - The card's rarity value (1-12)
+ * @param {string | number} rarity - The card's rarity value (1-12 or string)
  * @returns {number} - The desirability value (0-4)
  */
-export const calculateDesirabilityFromRarity = (rarity: number): number => {
+export const calculateDesirabilityFromRarity = (rarity: string | number): number => {
+  // Convert string rarity to number if needed
+  const rarityValue = typeof rarity === 'string' 
+    ? parseInt(rarity, 10) || 0  // Try to parse the string as a number, default to 0 if NaN
+    : rarity;
+  
   // Map rarity values to desirability values
   // "C", "U" (Common - 1 Diamonds / Uncommon - 2 Diamonds) -> desirability 1
   // "R" (Rare - 3 Diamonds) -> desirability 2
   // "RR", "AR" (EX - 4 Diamonds/1 Star) -> desirability 3
   // "SR", "SAR" (Super Rare - 2 Stars / Super Art Rare - Rainbow 2 Star) -> desirability 4
   
-  switch (rarity) {
+  switch (rarityValue) {
     case 1: return 1;  // Common - 1 Diamonds
     case 2: return 1;  // Uncommon - 2 Diamonds
     case 3: return 2;  // Rare - 3 Diamonds

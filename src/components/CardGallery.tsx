@@ -12,6 +12,9 @@ type ImageModules = Record<string, ImageModule>;
 // @ts-ignore - The glob import pattern is provided by Vite
 const images = import.meta.glob<ImageModule>('../assets/card-images/*/*.png', { eager: true }) as ImageModules
 
+// Create image cache for remote images
+const imageCache = new Map<string, string>();
+
 /**
  * CardGallery Component
  * 
@@ -31,6 +34,8 @@ const CardGallery: React.FC = () => {
   const [resetKey, setResetKey] = useState<number>(0) // Used to force re-render after reset
   const [filterOwned, setFilterOwned] = useState<boolean>(false)
   const [filterWanted, setFilterWanted] = useState<boolean>(false)
+  const [instructionsCollapsed, setInstructionsCollapsed] = useState<boolean>(true)
+  const [nameFilter, setNameFilter] = useState<string>('')
 
   /**
    * Load database on component mount
@@ -69,16 +74,56 @@ const CardGallery: React.FC = () => {
         // Apply wanted filter if enabled
         if (filterWanted && card.card_desirability <= 0) return false
         
+        // Apply name filter if provided
+        if (nameFilter && !card.card_name.toLowerCase().includes(nameFilter.toLowerCase())) return false
+        
         return true
       })
       .map(([key, card]) => {
+        // Always try to get image from card_image_url first
+        if (card.card_image_url) {
+          return { key, ...card, imageUrl: card.card_image_url };
+        }
+        
+        // Only fallback to other methods if card_image_url is not available
+        if (card.image_url) {
+          return { key, ...card, imageUrl: card.image_url };
+        }
+        
+        // Last resort: fall back to local images
         const imageEntry = Object.entries(images).find(
           ([path]) => path.includes(`${selectedSet}/${'c' + key}`)
         )
         const imageUrl = imageEntry ? imageEntry[1].default : null
         return { key, ...card, imageUrl }
       })
-  }, [selectedSet, cardsDatabase, filterOwned, filterWanted])
+  }, [selectedSet, cardsDatabase, filterOwned, filterWanted, nameFilter])
+
+  // Cache images when they're loaded
+  const cacheImage = useCallback((url: string) => {
+    if (!imageCache.has(url)) {
+      // Create a function to cache the image after it loads
+      const img = new Image();
+      img.onload = () => {
+        imageCache.set(url, url);
+        // You could add more functionality here if needed
+        // like storing in localStorage or IndexedDB for persistence
+      };
+      img.src = url;
+    }
+  }, []);
+
+  // Preload and cache images when the set changes
+  useEffect(() => {
+    if (!isChangingSet && !isLoading) {
+      // Preload and cache all images in the current set
+      cards.forEach(card => {
+        if (card.imageUrl && card.card_image_url) {
+          cacheImage(card.imageUrl);
+        }
+      });
+    }
+  }, [cards, isChangingSet, isLoading, cacheImage]);
 
   // Handle set changing with loading state
   useEffect(() => {
@@ -119,6 +164,25 @@ const CardGallery: React.FC = () => {
   const modalCard = modalCardKey
     ? cards.find(c => c.key === modalCardKey)
     : null
+
+  /**
+   * Handle image loading error by falling back to local images
+   * @param {React.SyntheticEvent<HTMLImageElement>} e - Image error event
+   * @param {CardWithKey} card - Card object for which image failed to load
+   */
+  const handleImageError = (e: React.SyntheticEvent<HTMLImageElement>, card: CardWithKey) => {
+    // Try to fall back to local images
+    const imageEntry = Object.entries(images).find(
+      ([path]) => path.includes(`${selectedSet}/${'c' + card.key}`)
+    );
+    
+    if (imageEntry) {
+      e.currentTarget.src = imageEntry[1].default;
+    } else {
+      // If no local image either, use a placeholder
+      e.currentTarget.src = 'https://via.placeholder.com/245x342?text=Image+Not+Found';
+    }
+  };
 
   /**
    * Handle owned status change
@@ -247,6 +311,14 @@ const CardGallery: React.FC = () => {
     if (name === 'owned') setFilterOwned(checked);
     if (name === 'wanted') setFilterWanted(checked);
   }
+  
+  /**
+   * Handle name filter change
+   * @param {React.ChangeEvent<HTMLInputElement>} e - Change event
+   */
+  const handleNameFilterChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
+    setNameFilter(e.target.value);
+  }
 
   /**
    * Handle import button click to import a database from a file
@@ -276,15 +348,23 @@ const CardGallery: React.FC = () => {
   return (
     <div className="card-gallery-container">
       <div className="instructions instructions-container">
-        <h3>Card Gallery Instructions:</h3>
-        <ul>
-          <li>Select a card set from the dropdown menu</li>
-          <li>Use the filters to show only owned or wanted cards</li>
-          <li>Click on any card to mark it as owned or wanted</li>
-          <li>Use the buttons on each card to quickly toggle status</li>
-          <li>Use the Save button to download your collection</li>
-          <li>Use the Reset button to restore original values</li>
-        </ul>
+        <div className="instructions-header" onClick={() => setInstructionsCollapsed(prev => !prev)}>
+          <h3>Card Gallery Instructions:</h3>
+          <span className="collapse-btn">
+            {instructionsCollapsed ? '▼' : '▲'}
+          </span>
+        </div>
+        {!instructionsCollapsed && (
+          <ul>
+            <li>Select a card set from the dropdown menu</li>
+            <li>Use the filters to show only owned or wanted cards</li>
+            <li>Click on any card to mark it as owned or wanted</li>
+            <li>Use the buttons on each card to quickly toggle status</li>
+            <li>Use the Export button to download your collection</li>
+            <li>Use the Import button to load a saved collection</li>
+            <li>Use the Reset button to restore original values</li>
+          </ul>
+        )}
       </div>
 
       <div className="gallery-controls-container">
@@ -301,48 +381,63 @@ const CardGallery: React.FC = () => {
             ))}
           </select>
           
-          <div className="filter-checkboxes filter-container">
-            <label className="filter-label">
+          <div className="filter-container">
+            <div className="filter-row">
               <input
-                type="checkbox"
-                name="owned"
-                checked={filterOwned}
-                onChange={handleFilterChange}
+                type="text"
+                placeholder="Filter by name..."
+                value={nameFilter}
+                onChange={handleNameFilterChange}
+                className="name-filter"
               />
-              Owned Cards
-            </label>
-            <label className="filter-label">
-              <input
-                type="checkbox"
-                name="wanted"
-                checked={filterWanted}
-                onChange={handleFilterChange}
-              />
-              Wanted Cards
-            </label>
+              
+              <div className="filter-checkboxes">
+                <label className="filter-label">
+                  <input
+                    type="checkbox"
+                    name="owned"
+                    checked={filterOwned}
+                    onChange={handleFilterChange}
+                  />
+                  Owned Cards
+                </label>
+                <label className="filter-label">
+                  <input
+                    type="checkbox"
+                    name="wanted"
+                    checked={filterWanted}
+                    onChange={handleFilterChange}
+                  />
+                  Wanted Cards
+                </label>
+              </div>
+            </div>
           </div>
         </div>
 
         <div className="right-controls">
           <button 
-            className="action-button save-button" 
+            className="icon-button export-button" 
             onClick={handleSaveClick}
             disabled={isSaving || isResetting}
+            title="Export Database"
           >
-            {isSaving ? 'Saving...' : 'Save Card Database'}
+            {isSaving ? '⏳' : '📤'}
           </button>
           <button 
-            className="action-button import-button" 
+            className="icon-button import-button" 
             onClick={handleImportClick}
+            title="Import Database"
           >
-            Import Database
+            📥
           </button>
           <button 
-            className="action-button reset-button" 
+            className="icon-button reset-button" 
             onClick={handleResetClick}
             disabled={isSaving || isResetting}
+            title="Reset to Original Database"
           >
-            {isResetting ? 'Resetting...' : 'Reset to Original Card Database'}
+            {isResetting ? '⏳' : '🔄'}
           </button>
         </div>
       </div>
@@ -362,6 +457,8 @@ const CardGallery: React.FC = () => {
                   alt={card.card_name}
                   className="card-thumb"
                   onClick={() => openModal(card.key)}
+                  onLoad={() => card.card_image_url && cacheImage(card.card_image_url)}
+                  onError={(e) => handleImageError(e, card)}
                 />
                 {/* Card status panel */}
                 <div className="card-status-panel">
@@ -402,6 +499,7 @@ const CardGallery: React.FC = () => {
             <img
               src={modalCard.imageUrl || ''}
               alt={modalCard.card_name}
+              onError={(e) => handleImageError(e, modalCard)}
             />
             <div className="modal-checkboxes">
               <label>

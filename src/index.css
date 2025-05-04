@@ -25,9 +25,14 @@ a:hover {
 body {
   margin: 0;
   display: flex;
-  place-items: center;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
   min-width: 320px;
   min-height: 100vh;
+  overflow-x: hidden;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 h1 {
@@ -66,44 +71,3 @@ button:focus-visible {
     background-color: #f9f9f9;
   }
 }
-
-/* Card Gallery Styles */
-.instructions-container {
-  max-width: 800px;
-  margin: 0 auto 20px;
-}
-
-.controls-flex {
-  display: flex;
-  align-items: center;
-}
-
-.filter-container {
-  display: flex;
-  align-items: center;
-  margin-left: 15px;
-}
-
-.filter-label {
-  display: flex;
-  align-items: center;
-  margin-right: 15px;
-}
-
-.filter-label:last-child {
-  margin-right: 0;
-}
-
-.action-button {
-  margin-left: 10px;
-}
-
-.import-button {
-  background-color: #4a6c7a;
-}
-
-.import-button:hover {
-  background-color: #3a5c6a;
-  border-color: #3a5c6a;
-}
-/* End Card Gallery Styles */
