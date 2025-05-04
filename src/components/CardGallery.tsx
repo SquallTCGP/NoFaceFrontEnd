@@ -1,9 +1,9 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react'
-import FullCardsDB from '../json/Full_Cards_Database.json'
 import { calculateDesirabilityFromRarity } from '../utils/cardUtils'
-import { loadDatabase, saveDatabase, resetDatabase, downloadDatabaseAsFile, importDatabaseFromFile } from '../utils/dbUtils'
+import { loadDatabase, saveDatabase, downloadDatabaseAsFile, importDatabaseFromFile, databaseExists } from '../utils/dbUtils'
 import { Card, CardWithKey, CardsDatabase } from '../types'
 import { CARD_SETS } from '../utils/cardUtils'
+import NoDatabaseModal from './NoDatabaseModal'
 
 // Define the type for the imported images
 type ImageModule = { default: string };
@@ -26,12 +26,11 @@ const imageCache = new Map<string, string>();
 const CardGallery: React.FC = () => {
   const [selectedSet, setSelectedSet] = useState<string>(CARD_SETS[0])
   const [modalCardKey, setModalCardKey] = useState<string | null>(null)
-  const [cardsDatabase, setCardsDatabase] = useState<CardsDatabase>(FullCardsDB as CardsDatabase)
+  const [cardsDatabase, setCardsDatabase] = useState<CardsDatabase | null>(null)
   const [isLoading, setIsLoading] = useState<boolean>(true)
   const [isChangingSet, setIsChangingSet] = useState<boolean>(false)
   const [isSaving, setIsSaving] = useState<boolean>(false)
-  const [isResetting, setIsResetting] = useState<boolean>(false)
-  const [resetKey, setResetKey] = useState<number>(0) // Used to force re-render after reset
+  const [hasDatabaseError, setHasDatabaseError] = useState<boolean>(false)
   const [filterOwned, setFilterOwned] = useState<boolean>(false)
   const [filterWanted, setFilterWanted] = useState<boolean>(false)
   const [instructionsCollapsed, setInstructionsCollapsed] = useState<boolean>(true)
@@ -43,12 +42,19 @@ const CardGallery: React.FC = () => {
   const loadData = useCallback(async () => {
     try {
       setIsLoading(true)
-      const db = await loadDatabase()
-      setCardsDatabase(db)
+      // Check if a database exists in localStorage
+      if (databaseExists()) {
+        const db = await loadDatabase()
+        setCardsDatabase(db)
+        setHasDatabaseError(false)
+      } else {
+        // No database found, user will need to import one
+        setCardsDatabase(null)
+        setHasDatabaseError(true)
+      }
     } catch (error) {
       console.error('Error loading database:', error)
-      // Fallback to the imported database
-      setCardsDatabase(FullCardsDB as CardsDatabase)
+      setHasDatabaseError(true)
     } finally {
       setIsLoading(false)
     }
@@ -56,13 +62,24 @@ const CardGallery: React.FC = () => {
 
   useEffect(() => {
     loadData()
-  }, [loadData, resetKey])
+  }, [loadData])
+
+  /**
+   * Handle database import
+   * @param {CardsDatabase} database - The imported database
+   */
+  const handleDatabaseImported = (database: CardsDatabase) => {
+    setCardsDatabase(database)
+    setHasDatabaseError(false)
+  }
 
   /**
    * Filter JSON entries by selected set and attach image URL
    * Apply owned/wanted filters if enabled
    */
   const cards = useMemo<CardWithKey[]>(() => {
+    if (!cardsDatabase) return []
+    
     return Object.entries(cardsDatabase)
       .filter(([, card]) => {
         // Apply set filter
@@ -82,6 +99,7 @@ const CardGallery: React.FC = () => {
       .map(([key, card]) => {
         // Always try to get image from card_image_url first
         if (card.card_image_url) {
+          console.log(`Using remote URL for ${card.card_name}: ${card.card_image_url}`);
           return { key, ...card, imageUrl: card.card_image_url };
         }
         
@@ -115,7 +133,7 @@ const CardGallery: React.FC = () => {
 
   // Preload and cache images when the set changes
   useEffect(() => {
-    if (!isChangingSet && !isLoading) {
+    if (!isChangingSet && !isLoading && cardsDatabase) {
       // Preload and cache all images in the current set
       cards.forEach(card => {
         if (card.imageUrl && card.card_image_url) {
@@ -123,21 +141,18 @@ const CardGallery: React.FC = () => {
         }
       });
     }
-  }, [cards, isChangingSet, isLoading, cacheImage]);
+  }, [cards, isChangingSet, isLoading, cacheImage, cardsDatabase]);
 
-  // Handle set changing with loading state
+  // Replace with this simpler implementation that only responds to set changes
   useEffect(() => {
-    // Skip initial render
-    if (!isLoading) {
-      setIsChangingSet(true)
-      // Simulate loading time for images
+    if (cardsDatabase && !isLoading) {
+      setIsChangingSet(true);
       const timer = setTimeout(() => {
-        setIsChangingSet(false)
-      }, 800) // Adjust timing as needed
-      
-      return () => clearTimeout(timer)
+        setIsChangingSet(false);
+      }, 800);
+      return () => clearTimeout(timer);
     }
-  }, [selectedSet, isLoading])
+  }, [selectedSet]); // Only depend on selectedSet
 
   /**
    * Handle set change from dropdown
@@ -190,6 +205,8 @@ const CardGallery: React.FC = () => {
    * @param {boolean} isOwned - New owned status
    */
   const handleOwnedChange = (cardKey: string, isOwned: boolean): void => {
+    if (!cardsDatabase) return;
+    
     // Update in-memory database
     const updatedDb = {
       ...cardsDatabase,
@@ -212,6 +229,8 @@ const CardGallery: React.FC = () => {
    * @param {boolean} isWanted - New wanted status
    */
   const handleWantedChange = (cardKey: string, isWanted: boolean): void => {
+    if (!cardsDatabase) return;
+    
     const card = cardsDatabase[cardKey]
     
     // Calculate new desirability if card is wanted
@@ -247,6 +266,8 @@ const CardGallery: React.FC = () => {
    * @param {string} cardKey - Key of the card to toggle
    */
   const toggleOwned = (e: React.MouseEvent, cardKey: string): void => {
+    if (!cardsDatabase) return;
+    
     e.stopPropagation(); // Prevent opening the modal
     const card = cardsDatabase[cardKey];
     handleOwnedChange(cardKey, !card.card_owned);
@@ -258,6 +279,8 @@ const CardGallery: React.FC = () => {
    * @param {string} cardKey - Key of the card to toggle
    */
   const toggleWanted = (e: React.MouseEvent, cardKey: string): void => {
+    if (!cardsDatabase) return;
+    
     e.stopPropagation(); // Prevent opening the modal
     const card = cardsDatabase[cardKey];
     if (card.card_obtainable || card.card_tradable) {
@@ -266,39 +289,31 @@ const CardGallery: React.FC = () => {
   }
 
   /**
-   * Handle save button click to download database
+   * Handle export button click to download database
    */
-  const handleSaveClick = async (): Promise<void> => {
+  const handleExportClick = async (): Promise<void> => {
+    if (!cardsDatabase) return;
+    
     setIsSaving(true);
     try {
       await downloadDatabaseAsFile(cardsDatabase);
     } catch (error) {
-      console.error('Error saving database:', error);
+      console.error('Error exporting database:', error);
     } finally {
       setTimeout(() => setIsSaving(false), 1000);
     }
   }
 
   /**
-   * Handle reset button click to restore original database
+   * Handle import button click to import a database from a file
    */
-  const handleResetClick = async (): Promise<void> => {
-    if (confirm('Are you sure you want to reset the database to original values? This will lose all your changes.')) {
-      setIsResetting(true);
-      try {
-        // Reset the database
-        const originalDb = await resetDatabase();
-        setCardsDatabase(originalDb);
-        
-        // Force a complete re-render by changing the reset key
-        setTimeout(() => {
-          setResetKey(prev => prev + 1);
-        }, 100);
-      } catch (error) {
-        console.error('Error resetting database:', error);
-      } finally {
-        setTimeout(() => setIsResetting(false), 1000);
-      }
+  const handleImportClick = async (): Promise<void> => {
+    try {
+      const importedDb = await importDatabaseFromFile();
+      setCardsDatabase(importedDb);
+      setHasDatabaseError(false);
+    } catch (error) {
+      console.error('Error importing database:', error);
     }
   }
 
@@ -320,22 +335,7 @@ const CardGallery: React.FC = () => {
     setNameFilter(e.target.value);
   }
 
-  /**
-   * Handle import button click to import a database from a file
-   */
-  const handleImportClick = async (): Promise<void> => {
-    try {
-      const importedDb = await importDatabaseFromFile();
-      setCardsDatabase(importedDb);
-      // Force a complete re-render by changing the reset key
-      setTimeout(() => {
-        setResetKey(prev => prev + 1);
-      }, 100);
-    } catch (error) {
-      console.error('Error importing database:', error);
-    }
-  }
-
+  // Show loading screen
   if (isLoading) {
     return (
       <div className="loading-container">
@@ -343,6 +343,11 @@ const CardGallery: React.FC = () => {
         <p>Loading cards database...</p>
       </div>
     );
+  }
+
+  // Show the import modal if no database is found
+  if (hasDatabaseError || !cardsDatabase) {
+    return <NoDatabaseModal onDatabaseImported={handleDatabaseImported} />;
   }
 
   return (
@@ -362,7 +367,6 @@ const CardGallery: React.FC = () => {
             <li>Use the buttons on each card to quickly toggle status</li>
             <li>Use the Export button to download your collection</li>
             <li>Use the Import button to load a saved collection</li>
-            <li>Use the Reset button to restore original values</li>
           </ul>
         )}
       </div>
@@ -372,7 +376,7 @@ const CardGallery: React.FC = () => {
           <select
             value={selectedSet}
             onChange={handleSetChange}
-            disabled={isChangingSet || isSaving || isResetting}
+            disabled={isChangingSet || isSaving}
           >
             {CARD_SETS.map(set => (
               <option key={set} value={set}>
@@ -418,8 +422,8 @@ const CardGallery: React.FC = () => {
         <div className="right-controls">
           <button 
             className="icon-button export-button" 
-            onClick={handleSaveClick}
-            disabled={isSaving || isResetting}
+            onClick={handleExportClick}
+            disabled={isSaving}
             title="Export Database"
           >
             {isSaving ? '⏳' : '📤'}
@@ -430,14 +434,6 @@ const CardGallery: React.FC = () => {
             title="Import Database"
           >
             📥
-          </button>
-          <button 
-            className="icon-button reset-button" 
-            onClick={handleResetClick}
-            disabled={isSaving || isResetting}
-            title="Reset to Original Database"
-          >
-            {isResetting ? '⏳' : '🔄'}
           </button>
         </div>
       </div>

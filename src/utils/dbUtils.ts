@@ -2,7 +2,7 @@
  * Database Utilities Module
  * 
  * Provides functions for loading, saving, and managing the card database.
- * Handles persistent storage operations, database initialization, and database exports.
+ * Handles persistent storage operations and database exports.
  * 
  * @module dbUtils
  */
@@ -11,99 +11,65 @@ import { CardsDatabase } from '../types';
 import { downloadFile, readFile } from './webFileService';
 
 /**
- * Initializes the database by copying the original to working copy if needed
- * @returns {Promise<CardsDatabase>} The working database
+ * Key used for storing the card database in localStorage
+ * Changing this key would invalidate any previously saved databases
+ * @constant
  */
-export const initDatabase = async (): Promise<CardsDatabase> => {
-  // Check if working database exists and load it
-  try {
-    const response = await fetch('/src/json/Full_Cards_Database.json');
-    return await response.json() as CardsDatabase;
-  } catch (error) {
-    console.error('Error loading database:', error);
-    
-    // If working DB doesn't exist or error, use original
-    const originalResponse = await fetch('/src/json/original_db/Full_Cards_Database.json');
-    const originalDb = await originalResponse.json() as CardsDatabase;
-    
-    // Save original as working copy
-    await saveDatabase(originalDb);
-    
-    return originalDb;
-  }
-};
+const DB_STORAGE_KEY = 'cardsDatabase';
 
 /**
- * Loads the original database directly from source
- * @returns {Promise<CardsDatabase>} The original database
- */
-export const loadOriginalDatabase = async (): Promise<CardsDatabase> => {
-  try {
-    // For web browser, fetch from file
-    const response = await fetch('/src/json/Full_Cards_Database.json');
-    const originalDb = await response.json() as CardsDatabase;
-    return originalDb;
-  } catch (error) {
-    console.error('Error loading original database:', error);
-    throw error;
-  }
-};
-
-/**
- * Saves the database to the working copy file
+ * Saves the database to localStorage
  * @param {CardsDatabase} database - The database to save
  * @returns {Promise<void>}
  */
 export const saveDatabase = async (database: CardsDatabase): Promise<void> => {
   try {
-    // For development, we'll just log the save operation and use localStorage
-    localStorage.setItem('cardsDatabase', JSON.stringify(database));
+    localStorage.setItem(DB_STORAGE_KEY, JSON.stringify(database));
     console.log('Database saved to localStorage');
   } catch (error) {
     console.error('Error saving database:', error);
+    throw error;
   }
 };
 
 /**
- * Loads the database from localStorage or initializes it if needed
+ * Checks if a database exists in localStorage
+ * @returns {boolean} Whether a database exists
+ */
+export const databaseExists = (): boolean => {
+  return !!localStorage.getItem(DB_STORAGE_KEY);
+};
+
+/**
+ * Loads the database from localStorage
  * @returns {Promise<CardsDatabase>} The loaded database
+ * @throws {Error} If no database is found in localStorage
  */
 export const loadDatabase = async (): Promise<CardsDatabase> => {
-  // Try to load from localStorage first (simulating loading from saved file)
-  const savedDb = localStorage.getItem('cardsDatabase');
+  const savedDb = localStorage.getItem(DB_STORAGE_KEY);
   
-  if (savedDb) {
-    try {
-      return JSON.parse(savedDb) as CardsDatabase;
-    } catch (error) {
-      console.error('Error parsing saved database:', error);
-    }
+  if (!savedDb) {
+    throw new Error('No database found in localStorage');
   }
   
-  // If no saved database, initialize from original
-  return await initDatabase();
+  try {
+    return JSON.parse(savedDb) as CardsDatabase;
+  } catch (error) {
+    console.error('Error parsing saved database:', error);
+    throw new Error('Failed to parse database from localStorage');
+  }
 };
 
 /**
- * Resets the database to original values
- * @returns {Promise<CardsDatabase>} The reset database
+ * Clears the database from localStorage
+ * @returns {Promise<void>}
  */
-export const resetDatabase = async (): Promise<CardsDatabase> => {
+export const clearDatabase = async (): Promise<void> => {
   try {
-    // Remove the localStorage entry first
-    localStorage.removeItem('cardsDatabase');
-    
-    // Fetch original database
-    const originalDb = await loadOriginalDatabase();
-    
-    // Save it back to localStorage
-    await saveDatabase(originalDb);
-    
-    console.log('Database reset to original values and saved to localStorage');
-    
-    return originalDb;
+    localStorage.removeItem(DB_STORAGE_KEY);
+    console.log('Database cleared from localStorage');
   } catch (error) {
-    console.error('Error resetting database:', error);
+    console.error('Error clearing database:', error);
     throw error;
   }
 };
@@ -137,9 +103,10 @@ export const downloadDatabaseAsFile = async (database: CardsDatabase): Promise<v
     const jsonString = JSON.stringify(database, null, 2);
     
     // Use our web file service to download the file
-    downloadFile(jsonString, 'Full_Cards_Database.json');
+    downloadFile(jsonString, 'Cards_Database.json');
     console.log('Database download initiated');
   } catch (error) {
     console.error('Error downloading database:', error);
+    throw error;
   }
 }; 
