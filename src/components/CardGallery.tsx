@@ -99,7 +99,6 @@ const CardGallery: React.FC = () => {
       .map(([key, card]) => {
         // Always try to get image from card_image_url first
         if (card.card_image_url) {
-          console.log(`Using remote URL for ${card.card_name}: ${card.card_image_url}`);
           return { key, ...card, imageUrl: card.card_image_url };
         }
         
