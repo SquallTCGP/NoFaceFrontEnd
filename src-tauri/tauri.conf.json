@@ -1,8 +1,8 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "productName": "nofacefrontend",
+  "productName": "No Face Bot Client",
   "version": "0.1.0",
-  "identifier": "com.squalltcg.nofacefrontend",
+  "identifier": "com.squalltcg.pokemontcgpocket.nofacebot",
   "build": {
     "frontendDist": "../dist",
     "devUrl": "http://localhost:5173",
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "No Face Client",
+        "title": "No Face Bot Client",
         "width": 800,
         "height": 600,
         "resizable": true,

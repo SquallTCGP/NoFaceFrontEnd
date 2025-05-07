@@ -24,7 +24,7 @@ const imageCache = new Map<string, string>();
  * @returns {JSX.Element} The rendered CardGallery component
  */
 const CardGallery: React.FC = () => {
-  const [selectedSet, setSelectedSet] = useState<string>(CARD_SETS[0])
+  const [selectedSet, setSelectedSet] = useState<string>('none')
   const [modalCardKey, setModalCardKey] = useState<string | null>(null)
   const [cardsDatabase, setCardsDatabase] = useState<CardsDatabase | null>(null)
   const [isLoading, setIsLoading] = useState<boolean>(true)
@@ -82,8 +82,11 @@ const CardGallery: React.FC = () => {
     
     return Object.entries(cardsDatabase)
       .filter(([, card]) => {
-        // Apply set filter
-        if (card.card_set_base_name !== selectedSet) return false
+        // Show no cards when 'none' is selected
+        if (selectedSet === 'none') return false
+        
+        // Apply set filter for specific sets (skip for 'all')
+        if (selectedSet !== 'all' && card.card_set_base_name !== selectedSet) return false
         
         // Apply owned filter if enabled
         if (filterOwned && !card.card_owned) return false
@@ -109,7 +112,7 @@ const CardGallery: React.FC = () => {
         
         // Last resort: fall back to local images
         const imageEntry = Object.entries(images).find(
-          ([path]) => path.includes(`${selectedSet}/${'c' + key}`)
+          ([path]) => path.includes(`${card.card_set_base_name}/${'c' + key}`)
         )
         const imageUrl = imageEntry ? imageEntry[1].default : null
         return { key, ...card, imageUrl }
@@ -377,6 +380,9 @@ const CardGallery: React.FC = () => {
             onChange={handleSetChange}
             disabled={isChangingSet || isSaving}
           >
+            <option value="none">Select a set</option>
+            <option value="all">All sets</option>
+            <option value="" disabled>──────────</option>
             {CARD_SETS.map(set => (
               <option key={set} value={set}>
                 {set}
