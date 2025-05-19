@@ -1,5 +1,8 @@
-import './App.css'
-import CardGallery from './components/CardGallery'
+import React, { useState } from 'react';
+import CardGallery from './components/CardGallery';
+import PackSharing from './components/PackSharing';
+import Navigation from './components/Navigation';
+import './App.css';
 
 /**
  * Root application component
@@ -9,12 +12,17 @@ import CardGallery from './components/CardGallery'
  * 
  * @returns {JSX.Element} The rendered application
  */
-function App() {
-  return (
-    <div>
-      <CardGallery />
-    </div>
-  )
-}
+const App: React.FC = () => {
+  const [currentPage, setCurrentPage] = useState<string>('gallery');
 
-export default App
+  return (
+    <div className="app-container">
+      <Navigation currentPage={currentPage} onPageChange={setCurrentPage} />
+      <main className="main-content">
+        {currentPage === 'gallery' ? <CardGallery /> : <PackSharing />}
+      </main>
+    </div>
+  );
+};
+
+export default App;
