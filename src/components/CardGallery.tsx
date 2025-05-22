@@ -31,10 +31,12 @@ const CardGallery: React.FC = () => {
   const [isChangingSet, setIsChangingSet] = useState<boolean>(false)
   const [isSaving, setIsSaving] = useState<boolean>(false)
   const [hasDatabaseError, setHasDatabaseError] = useState<boolean>(false)
+  const [filterMissing, setFilterMissing] = useState<boolean>(false);
   const [filterOwned, setFilterOwned] = useState<boolean>(false)
   const [filterWanted, setFilterWanted] = useState<boolean>(false)
   const [instructionsCollapsed, setInstructionsCollapsed] = useState<boolean>(true)
   const [nameFilter, setNameFilter] = useState<string>('')
+  const [cardWidth, setCardWidth] = useState<number>(185);
 
   /**
    * Load database on component mount
@@ -93,6 +95,9 @@ const CardGallery: React.FC = () => {
         
         // Apply wanted filter if enabled
         if (filterWanted && card.card_desirability <= 0) return false
+
+        // Apply missing filter if enabled
+        if (filterMissing && card.card_owned) return false;
         
         // Apply name filter if provided
         if (nameFilter && !card.card_name.toLowerCase().includes(nameFilter.toLowerCase())) return false
@@ -117,7 +122,7 @@ const CardGallery: React.FC = () => {
         const imageUrl = imageEntry ? imageEntry[1].default : null
         return { key, ...card, imageUrl }
       })
-  }, [selectedSet, cardsDatabase, filterOwned, filterWanted, nameFilter])
+  }, [selectedSet, cardsDatabase, filterOwned, filterWanted, filterMissing, nameFilter])
 
   // Cache images when they're loaded
   const cacheImage = useCallback((url: string) => {
@@ -291,6 +296,30 @@ const CardGallery: React.FC = () => {
   }
 
   /**
+   * Toggle trade desirability status by clicking the button
+   * @param {React.MouseEvent} e - Click event
+   * @param {string} cardKey - Key of the card to toggle
+   */
+  const toggleTrade = (e: React.MouseEvent, cardKey: string): void => {
+    if (!cardsDatabase) return;
+
+    e.stopPropagation(); // Prevent opening the modal
+    const card = cardsDatabase[cardKey];
+
+    const updatedDb = {
+      ...cardsDatabase,
+      [cardKey]: {
+        ...card,
+        card_trade_desirability: !card.card_trade_desirability,
+      },
+    };
+
+    saveDatabase(updatedDb);
+    setCardsDatabase(updatedDb);
+  };
+
+
+  /**
    * Handle export button click to download database
    */
   const handleExportClick = async (): Promise<void> => {
@@ -327,6 +356,7 @@ const CardGallery: React.FC = () => {
     const { name, checked } = e.target;
     if (name === 'owned') setFilterOwned(checked);
     if (name === 'wanted') setFilterWanted(checked);
+    if (name === 'missing') setFilterMissing(checked);
   }
   
   /**
@@ -353,180 +383,274 @@ const CardGallery: React.FC = () => {
   }
 
   return (
-    <div className="card-gallery-container">
-      <div className="instructions instructions-container">
-        <div className="instructions-header" onClick={() => setInstructionsCollapsed(prev => !prev)}>
-          <h3>Card Gallery Instructions:</h3>
-          <span className="collapse-btn">
-            {instructionsCollapsed ? '▼' : '▲'}
-          </span>
-        </div>
-        {!instructionsCollapsed && (
-          <ul>
-            <li>Select a card set from the dropdown menu</li>
-            <li>Use the filters to show only owned or wanted cards</li>
-            <li>Click on any card to mark it as owned or wanted</li>
-            <li>Use the buttons on each card to quickly toggle status</li>
-            <li>Use the Export button to download your collection</li>
-            <li>Use the Import button to load a saved collection</li>
-          </ul>
-        )}
-      </div>
+    <div className="card-gallery-scroll-wrapper">
+      <div className="card-gallery-container">
+        <div className="gallery-header">
+          <div className="instructions instructions-container">
+            <div className="instructions-header" onClick={() => setInstructionsCollapsed(prev => !prev)}>
+              <h3>Card Gallery Instructions:</h3>
+              <span className="collapse-btn">
+                {instructionsCollapsed ? '▼' : '▲'}
+              </span>
+            </div>
+            {!instructionsCollapsed && (
+              <ul>
+                <li>Select a card set from the dropdown menu</li>
+                <li>Use the filters to show only owned or wanted cards</li>
+                <li>Click on any card to mark it as owned or wanted</li>
+                <li>Use the buttons on each card to quickly toggle status</li>
+                <li>Use the Export button to download your collection</li>
+                <li>Use the Import button to load a saved collection</li>
+              </ul>
+            )}
+          </div>
 
-      <div className="gallery-controls-container">
-        <div className="left-controls controls-flex">
-          <select
-            value={selectedSet}
-            onChange={handleSetChange}
-            disabled={isChangingSet || isSaving}
-          >
-            <option value="none">Select a set</option>
-            <option value="all">All sets</option>
-            <option value="" disabled>──────────</option>
-            {CARD_SETS.map(set => (
-              <option key={set} value={set}>
-                {set}
-              </option>
-            ))}
-          </select>
-          
-          <div className="filter-container">
-            <div className="filter-row">
+          <div className="gallery-controls-container">
+            <div className="card-size-slider">
+              <label htmlFor="cardWidthSlider" style={{ marginRight: '10px' }}>
+                Card Size:
+              </label>
               <input
-                type="text"
-                placeholder="Filter by name..."
-                value={nameFilter}
-                onChange={handleNameFilterChange}
-                className="name-filter"
+                id="cardWidthSlider"
+                type="range"
+                min={150}
+                max={300}
+                step={5}
+                value={cardWidth}
+                onChange={(e) => setCardWidth(Number(e.target.value))}
               />
+            </div>
+            <div className="left-controls controls-flex">
+              <select
+                value={selectedSet}
+                onChange={handleSetChange}
+                disabled={isChangingSet || isSaving}
+              >
+                <option value="none">Select a set</option>
+                <option value="all">All sets</option>
+                <option value="" disabled>──────────</option>
+                {CARD_SETS.map(set => (
+                  <option key={set} value={set}>
+                    {set}
+                  </option>
+                ))}
+              </select>
               
-              <div className="filter-checkboxes">
-                <label className="filter-label">
+              <div className="filter-container">
+                <div className="filter-row">
                   <input
-                    type="checkbox"
-                    name="owned"
-                    checked={filterOwned}
-                    onChange={handleFilterChange}
+                    type="text"
+                    placeholder="Filter by name..."
+                    value={nameFilter}
+                    onChange={handleNameFilterChange}
+                    className="name-filter"
                   />
-                  Owned Cards
-                </label>
-                <label className="filter-label">
-                  <input
-                    type="checkbox"
-                    name="wanted"
-                    checked={filterWanted}
-                    onChange={handleFilterChange}
-                  />
-                  Wanted Cards
-                </label>
+                  
+                  <div className="filter-checkboxes">
+                    <label className="filter-label">
+                      <input
+                        type="checkbox"
+                        name="missing"
+                        checked={filterMissing}
+                        onChange={handleFilterChange}
+                      />
+                      Missing
+                    </label>
+                    <label className="filter-label">
+                      <input
+                        type="checkbox"
+                        name="owned"
+                        checked={filterOwned}
+                        onChange={handleFilterChange}
+                      />
+                      Owned
+                    </label>
+                    <label className="filter-label">
+                      <input
+                        type="checkbox"
+                        name="wanted"
+                        checked={filterWanted}
+                        onChange={handleFilterChange}
+                      />
+                      Wanted
+                    </label>
+                  </div>
+                </div>
               </div>
+            </div>
+
+            <div className="right-controls">
+              <button 
+                className="icon-button export-button" 
+                onClick={handleExportClick}
+                disabled={isSaving}
+                title="Export Database"
+              >
+                {isSaving ? '⏳' : '📤'}
+              </button>
+              <button 
+                className="icon-button import-button" 
+                onClick={handleImportClick}
+                title="Import Database"
+              >
+                📥
+              </button>
             </div>
           </div>
         </div>
 
-        <div className="right-controls">
-          <button 
-            className="icon-button export-button" 
-            onClick={handleExportClick}
-            disabled={isSaving}
-            title="Export Database"
+        {isChangingSet ? (
+          <div className="loading-container">
+            <div className="spinner"></div>
+            <p>Loading cards...</p>
+          </div>
+        ) : (
+          <div
+            className="card-grid"
+            style={{
+              gridTemplateColumns: `repeat(auto-fill, minmax(${cardWidth}px, 1fr))`,
+            }}
           >
-            {isSaving ? '⏳' : '📤'}
-          </button>
-          <button 
-            className="icon-button import-button" 
-            onClick={handleImportClick}
-            title="Import Database"
-          >
-            📥
-          </button>
-        </div>
-      </div>
-
-      {isChangingSet ? (
-        <div className="loading-container">
-          <div className="spinner"></div>
-          <p>Loading cards...</p>
-        </div>
-      ) : (
-        <div className="card-grid">
-          {cards.length > 0 ? cards.map(card =>
-            card.imageUrl ? (
-              <div key={card.key} className="card-container">
-                <img
-                  src={card.imageUrl}
-                  alt={card.card_name}
-                  className="card-thumb"
-                  onClick={() => openModal(card.key)}
-                  onLoad={() => card.card_image_url && cacheImage(card.card_image_url)}
-                  onError={(e) => handleImageError(e, card)}
-                />
-                {/* Card status panel */}
-                <div className="card-status-panel">
-                  <button 
-                    className={`status-btn owned-btn ${card.card_owned ? 'active' : ''}`}
-                    title={card.card_owned ? "Owned - Click to toggle" : "Not owned - Click to toggle"}
-                    onClick={(e) => toggleOwned(e, card.key)}
+            {cards.length > 0 ? cards.map(card =>
+              card.imageUrl ? (
+                <div
+                  key={card.key}
+                  className="card-wrapper"
+                  style={{
+                    width: `${cardWidth}px`,
+                    height: `${cardWidth * 1.5}px`,
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    justifyContent: 'center',
+                    opacity: card.card_owned ? 1 : 0.4,
+                    transition: 'all 0.2s ease',
+                  }}
+                >
+                  <div
+                    className="card-container"
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      transition: 'all 0.2s ease',
+                    }}
                   >
-                    ✓
-                  </button>
-                  
-                  {/* Only show wanted button if card is obtainable or tradable */}
-                  {(card.card_obtainable || card.card_tradable) && (
-                    <button 
-                      className={`status-btn wanted-btn ${card.card_desirability > 0 ? 'active' : ''}`}
-                      title={card.card_desirability > 0 ? "Wanted - Click to toggle" : "Not wanted - Click to toggle"}
-                      onClick={(e) => toggleWanted(e, card.key)}
-                    >
-                      ★
-                    </button>
-                  )}
-                </div>
-              </div>
-            ) : null
-          ) : (
-            <div className="no-results">
-              <p>No cards found with the current filters.</p>
-              <p>Try changing the set or adjusting the filters.</p>
-            </div>
-          )}
-        </div>
-      )}
+                    <img
+                      src={card.imageUrl}
+                      alt={card.card_name}
+                      className="card-thumb"
+                      style={{
+                        width: '100%',
+                        height: 'auto',
+                        boxShadow: [
+                          card.card_desirability > 0 ? '0 0 15px 4px rgba(255, 215, 0, 1)' : '',
+                          card.card_trade_desirability ? '0 0 15px 4px rgba(56, 189, 248, 1)' : '',
+                        ].filter(Boolean).join(', '),
+                        transition: 'transform 0.2s ease',
+                      }}
+                      onClick={() => openModal(card.key)}
+                      onLoad={() => card.card_image_url && cacheImage(card.card_image_url)}
+                      onError={(e) => handleImageError(e, card)}
+                    />
 
-      {modalCard && (
-        <div className="modal-overlay" onClick={closeModal}>
-          <div className="modal-content" onClick={e => e.stopPropagation()}>
-            <button className="modal-close-btn" onClick={closeModal}>×</button>
-            <img
-              src={modalCard.imageUrl || ''}
-              alt={modalCard.card_name}
-              onError={(e) => handleImageError(e, modalCard)}
-            />
-            <div className="modal-checkboxes">
-              <label>
-                <input
-                  type="checkbox"
-                  checked={modalCard.card_owned}
-                  onChange={e => handleOwnedChange(modalCard.key, e.target.checked)}
-                />
-                Owned
-              </label>
-              
-              {/* Only show wanted checkbox if card is obtainable or tradable */}
-              {(modalCard.card_obtainable || modalCard.card_tradable) && (
+                    <div className="card-status-panel">
+                      {/* Owned */}
+                      <button
+                        className={`status-btn owned-btn ${card.card_owned ? 'active' : ''}`}
+                        title={card.card_owned ? "Owned - Click to toggle" : "Not owned - Click to toggle"}
+                        onClick={(e) => toggleOwned(e, card.key)}
+                        style={{
+                          width: `${24 * (cardWidth / 185)}px`,
+                          height: `${24 * (cardWidth / 185)}px`,
+                          fontSize: `${12 * (cardWidth / 185)}px`,
+                          transition: 'all 0.2s ease',
+                        }}
+                      >
+                        ✓
+                      </button>
+
+                      {/* Wanted */}
+                      {(card.card_obtainable || card.card_tradable) && (
+                        <button
+                          className={`status-btn wanted-btn ${card.card_desirability > 0 ? 'active' : ''}`}
+                          title={card.card_desirability > 0 ? "Wanted - Click to toggle" : "Not wanted - Click to toggle"}
+                          onClick={(e) => toggleWanted(e, card.key)}
+                          style={{
+                            width: `${24 * (cardWidth / 185)}px`,
+                            height: `${24 * (cardWidth / 185)}px`,
+                            fontSize: `${12 * (cardWidth / 185)}px`,
+                            transition: 'all 0.2s ease',
+                          }}
+                        >
+                          ★
+                        </button>
+                      )}
+
+                      {/* Trade */}
+                      {card.card_tradable && (
+                        <button
+                          className={`status-btn trade-btn ${card.card_trade_desirability ? 'active' : ''}`}
+                          title={card.card_trade_desirability ? "Marked for Trade - Click to toggle" : "Not for Trade - Click to toggle"}
+                          onClick={(e) => toggleTrade(e, card.key)}
+                          style={{
+                            width: `${24 * (cardWidth / 185)}px`,
+                            height: `${24 * (cardWidth / 185)}px`,
+                            fontSize: `${12 * (cardWidth / 185)}px`,
+                            transition: 'all 0.2s ease',
+                          }}
+                        >
+                          ↻
+                        </button>
+                      )}
+                    </div>
+
+                  </div>
+                </div>
+              ) : null
+            ) : (
+              <div className="no-results">
+                <p>No cards found with the current filters.</p>
+                <p>Try changing the set or adjusting the filters.</p>
+              </div>
+            )}
+
+          </div>
+        )}
+
+        {modalCard && (
+          <div className="modal-overlay" onClick={closeModal}>
+            <div className="modal-content" onClick={e => e.stopPropagation()}>
+              <button className="modal-close-btn" onClick={closeModal}>×</button>
+              <img
+                src={modalCard.imageUrl || ''}
+                alt={modalCard.card_name}
+                onError={(e) => handleImageError(e, modalCard)}
+              />
+              <div className="modal-checkboxes">
                 <label>
                   <input
                     type="checkbox"
-                    checked={modalCard.card_desirability > 0}
-                    onChange={e => handleWantedChange(modalCard.key, e.target.checked)}
+                    checked={modalCard.card_owned}
+                    onChange={e => handleOwnedChange(modalCard.key, e.target.checked)}
                   />
-                  Wanted
+                  Owned
                 </label>
-              )}
+                
+                {/* Only show wanted checkbox if card is obtainable or tradable */}
+                {(modalCard.card_obtainable || modalCard.card_tradable) && (
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={modalCard.card_desirability > 0}
+                      onChange={e => handleWantedChange(modalCard.key, e.target.checked)}
+                    />
+                    Wanted
+                  </label>
+                )}
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   )
 }
