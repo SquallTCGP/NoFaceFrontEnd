@@ -11,6 +11,7 @@ type ImageModules = Record<string, ImageModule>;
 
 // @ts-ignore - The glob import pattern is provided by Vite
 const images = import.meta.glob<ImageModule>('../assets/card-images/*/*.png', { eager: true }) as ImageModules
+const SHARED_PACK_LABEL = "Core Pool";
 
 // Create image cache for remote images
 const imageCache = new Map<string, string>();
@@ -31,9 +32,12 @@ const CardGallery: React.FC = () => {
   const [isChangingSet, setIsChangingSet] = useState<boolean>(false)
   const [isSaving, setIsSaving] = useState<boolean>(false)
   const [hasDatabaseError, setHasDatabaseError] = useState<boolean>(false)
+  const [selectedPack, setSelectedPack] = useState<string>('all');
+  const [filterModalOpen, setFilterModalOpen] = useState<boolean>(false);
   const [filterMissing, setFilterMissing] = useState<boolean>(false);
   const [filterOwned, setFilterOwned] = useState<boolean>(false)
   const [filterWanted, setFilterWanted] = useState<boolean>(false)
+  const [filterTrade, setFilterTrade] = useState<boolean>(false);
   const [instructionsCollapsed, setInstructionsCollapsed] = useState<boolean>(true)
   const [nameFilter, setNameFilter] = useState<string>('')
   const [cardWidth, setCardWidth] = useState<number>(185);
@@ -89,6 +93,20 @@ const CardGallery: React.FC = () => {
         
         // Apply set filter for specific sets (skip for 'all')
         if (selectedSet !== 'all' && card.card_set_base_name !== selectedSet) return false
+
+        // Apply pack filter for specific packs
+        if (
+          selectedPack !== 'all' &&
+          (
+            (selectedPack === SHARED_PACK_LABEL &&
+              card.card_set_name !== selectedSet.split(" ")[0]) || // match the short name
+            (selectedPack !== SHARED_PACK_LABEL &&
+              card.card_set_name !== selectedPack)
+          )
+        ) {
+          return false;
+        }
+
         
         // Apply owned filter if enabled
         if (filterOwned && !card.card_owned) return false
@@ -98,6 +116,9 @@ const CardGallery: React.FC = () => {
 
         // Apply missing filter if enabled
         if (filterMissing && card.card_owned) return false;
+
+        // Apply trade filter if enabled
+        if (filterTrade && !card.card_trade_desirability) return false;
         
         // Apply name filter if provided
         if (nameFilter && !card.card_name.toLowerCase().includes(nameFilter.toLowerCase())) return false
@@ -122,7 +143,36 @@ const CardGallery: React.FC = () => {
         const imageUrl = imageEntry ? imageEntry[1].default : null
         return { key, ...card, imageUrl }
       })
-  }, [selectedSet, cardsDatabase, filterOwned, filterWanted, filterMissing, nameFilter])
+  }, [selectedSet, selectedPack, cardsDatabase, filterOwned, filterWanted, filterMissing, filterTrade, nameFilter])
+
+  /**
+   * Filter JSON entries by packs
+  */
+  const availablePacks = useMemo(() => {
+  if (!cardsDatabase || selectedSet === 'none' || selectedSet === 'all') return [];
+
+  const packs = new Set<string>();
+    Object.values(cardsDatabase).forEach(card => {
+      if (card.card_set_base_name === selectedSet) {
+        const packName = card.card_set_name;
+
+        // Detect "shared" pack pattern — it's the prefix of the base name
+        const expectedSharedName = selectedSet.split(" ")[0]; // "Genetic Apex" → "Genetic"
+        if (packName === expectedSharedName) {
+          packs.add(SHARED_PACK_LABEL); // Replace with nicer label
+        } else {
+          packs.add(packName);
+        }
+      }
+    });
+
+    return Array.from(packs).sort((a, b) => {
+      // Always put Core Pool last in sort (or change to top if preferred)
+      if (a === SHARED_PACK_LABEL) return 1;
+      if (b === SHARED_PACK_LABEL) return -1;
+      return a.localeCompare(b);
+    });
+  }, [cardsDatabase, selectedSet]);
 
   // Cache images when they're loaded
   const cacheImage = useCallback((url: string) => {
@@ -167,6 +217,7 @@ const CardGallery: React.FC = () => {
    */
   const handleSetChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setSelectedSet(e.target.value)
+    setSelectedPack('all');
   }
 
   /**
@@ -357,6 +408,7 @@ const CardGallery: React.FC = () => {
     if (name === 'owned') setFilterOwned(checked);
     if (name === 'wanted') setFilterWanted(checked);
     if (name === 'missing') setFilterMissing(checked);
+    if (name === 'trade') setFilterTrade(checked);
   }
   
   /**
@@ -404,7 +456,6 @@ const CardGallery: React.FC = () => {
               </ul>
             )}
           </div>
-
           <div className="gallery-controls-container">
             <div className="card-size-slider">
               <label htmlFor="cardWidthSlider" style={{ marginRight: '10px' }}>
@@ -421,21 +472,6 @@ const CardGallery: React.FC = () => {
               />
             </div>
             <div className="left-controls controls-flex">
-              <select
-                value={selectedSet}
-                onChange={handleSetChange}
-                disabled={isChangingSet || isSaving}
-              >
-                <option value="none">Select a set</option>
-                <option value="all">All sets</option>
-                <option value="" disabled>──────────</option>
-                {CARD_SETS.map(set => (
-                  <option key={set} value={set}>
-                    {set}
-                  </option>
-                ))}
-              </select>
-              
               <div className="filter-container">
                 <div className="filter-row">
                   <input
@@ -446,35 +482,13 @@ const CardGallery: React.FC = () => {
                     className="name-filter"
                   />
                   
-                  <div className="filter-checkboxes">
-                    <label className="filter-label">
-                      <input
-                        type="checkbox"
-                        name="missing"
-                        checked={filterMissing}
-                        onChange={handleFilterChange}
-                      />
-                      Missing
-                    </label>
-                    <label className="filter-label">
-                      <input
-                        type="checkbox"
-                        name="owned"
-                        checked={filterOwned}
-                        onChange={handleFilterChange}
-                      />
-                      Owned
-                    </label>
-                    <label className="filter-label">
-                      <input
-                        type="checkbox"
-                        name="wanted"
-                        checked={filterWanted}
-                        onChange={handleFilterChange}
-                      />
-                      Wanted
-                    </label>
-                  </div>
+                  <button
+                    className="action-button filter-button"
+                    onClick={() => setFilterModalOpen(true)}
+                  >
+                    Filter Options
+                  </button>
+
                 </div>
               </div>
             </div>
@@ -616,6 +630,103 @@ const CardGallery: React.FC = () => {
           </div>
         )}
 
+        {filterModalOpen && (
+          <div className="modal-overlay" onClick={() => setFilterModalOpen(false)}>
+            <div className="modal-content" onClick={e => e.stopPropagation()}>
+              <button className="modal-close-btn" onClick={() => setFilterModalOpen(false)}>×</button>
+              <h3 style={{ marginBottom: '1rem' }}>Filter Options</h3>
+              <select
+                value={selectedSet}
+                onChange={handleSetChange}
+                disabled={isChangingSet || isSaving}
+                style={{
+                  marginBottom: '1rem',
+                  padding: '0.5rem',
+                  fontSize: '1rem',
+                  width: '100%',
+                  borderRadius: '6px',
+                  border: '1px solid #ccc'
+                }}
+              >
+                <option value="none">Select a set</option>
+                <option value="all">All sets</option>
+                <option value="" disabled>──────────</option>
+                {CARD_SETS.map(set => (
+                  <option key={set} value={set}>
+                    {set}
+                  </option>
+                ))}
+              </select>
+
+              {availablePacks.length > 0 && (
+                <select
+                  value={selectedPack}
+                  onChange={(e) => setSelectedPack(e.target.value)}
+                  disabled={isChangingSet || isSaving}
+                  style={{
+                    marginBottom: '1rem',
+                    padding: '0.5rem',
+                    fontSize: '1rem',
+                    width: '100%',
+                    borderRadius: '6px',
+                    border: '1px solid #ccc'
+                  }}
+                >
+                  <option value="all">All Packs</option>
+                  <option disabled>──────────</option>
+                  {availablePacks.map(pack => (
+                    <option key={pack} value={pack}>
+                      {pack}
+                    </option>
+                  ))}
+                </select>
+              )}
+
+
+              <div className="modal-checkboxes">
+                <label>
+                  <input
+                    type="checkbox"
+                    name="missing"
+                    checked={filterMissing}
+                    onChange={handleFilterChange}
+                  />
+                  Missing
+                </label>
+                <label>
+                  <input
+                    type="checkbox"
+                    name="owned"
+                    checked={filterOwned}
+                    onChange={handleFilterChange}
+                  />
+                  Owned
+                </label>
+                <label>
+                  <input
+                    type="checkbox"
+                    name="wanted"
+                    checked={filterWanted}
+                    onChange={handleFilterChange}
+                  />
+                  Wanted
+                </label>
+                <label>
+                <input
+                  type="checkbox"
+                  name="trade"
+                  checked={filterTrade}
+                  onChange={handleFilterChange}
+                />
+                Trade
+              </label>
+              </div>
+            </div>
+          </div>
+        )}
+
+
+
         {modalCard && (
           <div className="modal-overlay" onClick={closeModal}>
             <div className="modal-content" onClick={e => e.stopPropagation()}>
@@ -650,6 +761,7 @@ const CardGallery: React.FC = () => {
             </div>
           </div>
         )}
+      
       </div>
     </div>
   )
