@@ -1,0 +1,485 @@
+/* ===============================
+   Layout Containers and Base Styles
+   =============================== */
+
+   .pack-sharing-container {
+    background: #1a1a1a;
+    color: white;
+    padding: 20px;
+    min-height: 100vh;
+  }
+  
+  /* ===============================
+     Controls Section (Filters, Buttons)
+     =============================== */
+  
+  .pack-controls {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 20px;
+    align-items: center;
+    background: rgba(34, 34, 34, 0.5);
+    padding: 15px;
+    border-radius: 8px;
+  }
+  
+  .filter-container {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+    flex: 1;
+  }
+  
+  /* Search Field Styling */
+  .search-field {
+    flex: 1;
+    max-width: 300px;
+  
+    input {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid #444;
+      border-radius: 4px;
+      background: #333;
+      color: white;
+      font-size: 0.9em;
+  
+      &::placeholder {
+        color: #888;
+      }
+  
+      &:focus {
+        outline: none;
+        border-color: #666;
+      }
+    }
+  }
+  
+  /* Filter Button */
+  .filter-button {
+    background: #4caf50;
+    color: white;
+    padding: 8px 16px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 500;
+    font-size: 0.9em;
+    transition: background-color 0.2s;
+  
+    &:hover {
+      background: #45a049;
+    }
+  }
+  
+  /* Pack Count Indicator */
+  .packs-count {
+    font-size: 0.9em;
+    color: #ccc;
+  }
+  
+  /* Share Buttons */
+  .share-selected-button,
+  .share-all-button {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 500;
+    font-size: 0.9em;
+    transition: all 0.2s;
+  
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  }
+  
+  .share-selected-button {
+    background: #2196f3;
+    color: white;
+  
+    &:hover:not(:disabled) {
+      background: #1e88e5;
+    }
+  }
+  
+  .share-all-button {
+    background: #4caf50;
+    color: white;
+  
+    &:hover:not(:disabled) {
+      background: #45a049;
+    }
+  }
+  
+  /* ===============================
+     Accordion Styles
+     =============================== */
+  
+  .accordion-section {
+    margin-bottom: 20px;
+    border: 1px solid #333;
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  
+  .accordion-header {
+    background: #333;
+    padding: 15px 20px;
+    font-weight: 500;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    transition: background-color 0.2s;
+  
+    &:hover {
+      background: #444;
+    }
+  
+    &::after {
+      content: '▼';
+      font-size: 0.8em;
+      transition: transform 0.2s ease;
+    }
+  
+    &.open::after {
+      transform: rotate(-180deg);
+    }
+  }
+  
+  .accordion-content {
+    background: #222;
+    padding: 20px;
+  }
+  
+  /* ===============================
+     Pack Display Grid and Rows
+     =============================== */
+  
+  .packs-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+  
+  .pack-row {
+    display: grid;
+    grid-template-columns: auto 1fr 2fr;
+    gap: 20px;
+    background: rgba(34, 34, 34, 0.5);
+    padding: 15px;
+    border-radius: 8px;
+    align-items: center;
+  }
+  
+  /* Checkbox Column */
+  .pack-checkbox-col {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  
+    input[type="checkbox"] {
+      width: 20px;
+      height: 20px;
+      cursor: pointer;
+    }
+  }
+  
+  /* Pack Info */
+  .pack-info-col {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .pack-meta {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+  }
+  
+  .set-icon {
+    width: 40px;
+    height: 40px;
+    object-fit: contain;
+  }
+  
+  .pack-details {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+  
+  .nickname {
+    font-weight: 500;
+    color: #fff;
+  }
+  
+  .friend-id {
+    font-size: 0.9em;
+    color: #ccc;
+  }
+  
+  /* Share Button in Each Pack */
+  .share-pack-button {
+    background: #2196f3;
+    color: white;
+    padding: 6px 12px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9em;
+    transition: background-color 0.2s;
+    width: fit-content;
+  
+    &:hover:not(:disabled) {
+      background: #1e88e5;
+    }
+  
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  }
+  
+  /* ===============================
+     Card Display Section
+     =============================== */
+  
+  .cards-display-col {
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+    padding: 10px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 4px;
+  
+    &::-webkit-scrollbar {
+      height: 8px;
+    }
+  
+    &::-webkit-scrollbar-track {
+      background: #1a1a1a;
+      border-radius: 4px;
+    }
+  
+    &::-webkit-scrollbar-thumb {
+      background: #333;
+      border-radius: 4px;
+  
+      &:hover {
+        background: #444;
+      }
+    }
+  }
+  
+  .card-wrapper {
+    flex: 0 0 auto;
+    width: 100px;
+  
+    img {
+      width: 100%;
+      height: auto;
+      border-radius: 4px;
+    }
+  }
+  
+  /* ===============================
+     Empty State
+     =============================== */
+  
+  .empty-state {
+    text-align: center;
+    padding: 20px;
+    color: #888;
+    font-style: italic;
+  }
+  
+  /* ===============================
+     Modal Styling
+     =============================== */
+  
+  .modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+  }
+  
+  .modal-content {
+    position: relative;
+    background-color: #1e1e1e;
+    padding: 30px;
+    border-radius: 10px;
+    max-width: 90%;
+    width: 500px;
+  }
+  
+  .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+  
+    h2 {
+      margin: 0;
+      color: white;
+    }
+  }
+  
+  .modal-body {
+    margin-bottom: 20px;
+  }
+  
+  .modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+  }
+  
+  .close-button {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 24px;
+    cursor: pointer;
+    padding: 0;
+    line-height: 1;
+  
+    &:hover {
+      color: #ccc;
+    }
+  }
+  
+  .cancel-button,
+  .apply-button {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 500;
+  }
+  
+  .cancel-button {
+    background: #666;
+    color: white;
+  
+    &:hover {
+      background: #555;
+    }
+  }
+  
+  .apply-button {
+    background: #4caf50;
+    color: white;
+  
+    &:hover {
+      background: #45a049;
+    }
+  }
+  
+  /* ===============================
+     Material Tailwind Component Overrides
+     =============================== */
+  
+  .accordion-header {
+    background-color: #2a2a2a !important;
+    color: white !important;
+    border-radius: 4px !important;
+    margin-bottom: 1px !important;
+  }
+  
+  .accordion-body {
+    background-color: #1a1a1a !important;
+    color: white !important;
+  }
+  
+  .dialog {
+    background-color: #2a2a2a !important;
+    color: white !important;
+  }
+  
+  .dialog-header {
+    color: white !important;
+  }
+  
+  .dialog-body {
+    color: white !important;
+  }
+  
+  .dialog-footer {
+    border-top: 1px solid #444 !important;
+  }
+  
+  /* ===============================
+     Filter Options Dropdown
+     =============================== */
+  
+  .filter-options {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+  
+    select {
+      background: #333;
+      color: white;
+      padding: 8px 16px;
+      border: 1px solid #444;
+      border-radius: 4px;
+      min-width: 150px;
+    }
+  }
+  
+  /* ===============================
+     Custom Scrollbar Styles (for .cards-display-col)
+     =============================== */
+  
+  .cards-display-col::-webkit-scrollbar {
+    height: 6px;
+  }
+  
+  .cards-display-col::-webkit-scrollbar-track {
+    background: rgba(34, 34, 34, 0.5);
+  }
+  
+  .cards-display-col::-webkit-scrollbar-thumb {
+    background: rgba(68, 68, 68, 0.5);
+    border-radius: 3px;
+  }
+  
+  /* ===============================
+     Responsive Layouts (Mobile)
+     =============================== */
+  
+  @media (max-width: 768px) {
+    .pack-controls {
+      flex-direction: column;
+      align-items: stretch;
+    }
+  
+    .filter-container {
+      flex-direction: column;
+    }
+  
+    .search-field {
+      max-width: none;
+    }
+  
+    .pack-row {
+      grid-template-columns: auto 1fr;
+      gap: 10px;
+    }
+  
+    .cards-display-col {
+      grid-column: 1 / -1;
+    }
+  }
+  

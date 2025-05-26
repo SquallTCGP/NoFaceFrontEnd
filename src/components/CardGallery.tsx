@@ -4,6 +4,7 @@ import { loadDatabase, saveDatabase, downloadDatabaseAsFile, importDatabaseFromF
 import { Card, CardWithKey, CardsDatabase } from '../types'
 import { CARD_SETS } from '../utils/cardUtils'
 import NoDatabaseModal from './NoDatabaseModal'
+import '../assets/styles/CardGallery.scss'
 
 // Define the type for the imported images
 type ImageModule = { default: string };
