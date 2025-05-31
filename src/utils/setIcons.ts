@@ -68,6 +68,11 @@ export const SET_ICONS: Record<string, SetIcon> = {
         "https://assets.pokemon-zone.com/game-assets/UI/Textures/System/PackSku/EXPANSION_PACK_A3_100090_SOLGALEO_en_US.webp",
     },
   },
+  "Extradimensional Crisis": {
+    baseSet: "Extradimensional Crisis",
+    baseSetImageUrl:
+      "https://assets.pokemon-zone.com/game-assets/UI/Textures/System/PackSku/EXPANSION_PACK_A3a_100110_CRISIS_en_US.webp",
+  },
 };
 
 /**
